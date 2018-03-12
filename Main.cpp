@@ -74,12 +74,12 @@ void help()
 {
 	std::cout << "Command List (lowercase only):" << std::endl;
 	std::cout << "+ 'help': Brings up this menu" << std::endl;
-	std::cout << "+ 'all': Start traversal using all algorithms (asks for file name on use)" << std::endl;
-	std::cout << "+ 'shp': Start traversal using the shortest hop path (asks for file name on use)" << std::endl;
-	std::cout << "+ 'sdp': Start traversal using the shortest distance path (asks for file name on use)" << std::endl;
-	std::cout << "+ 'stp': Start traversal using the shortest time path (asks for file name on use)" << std::endl;
-	std::cout << "+ 'ftp': Start traversal using the fewest trolls path (asks for file name on use)" << std::endl;
-	std::cout << "+ 'mgp': Start traversal using the maximum gold path (asks for file name on use)" << std::endl;
+	std::cout << "+ 'all': Start traversal using all algorithms (asks for file names on use)" << std::endl;
+	std::cout << "+ 'shp': Start traversal using the shortest hop path (asks for file names on use)" << std::endl;
+	std::cout << "+ 'sdp': Start traversal using the shortest distance path (asks for file names on use)" << std::endl;
+	std::cout << "+ 'stp': Start traversal using the shortest time path (asks for file names on use)" << std::endl;
+	std::cout << "+ 'ftp': Start traversal using the fewest trolls path (asks for file names on use)" << std::endl;
+	std::cout << "+ 'mgp': Start traversal using the maximum gold path (asks for file names on use)" << std::endl;
 	std::cout << std::endl;
 }
 
