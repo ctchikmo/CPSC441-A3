@@ -26,6 +26,10 @@ int main()
 				std::cout << "Command not recognized..." << std::endl << std::endl;
 				break;
 				
+			case CODE_GOOD:
+				std::cout << "Ready for another command" << std::endl;
+				break;
+				
 			case CODE_QUIT:
 				std::cout << "Quiting" << std::endl << std::endl;
 				return 0;

@@ -11,6 +11,8 @@
 #define ROUTE_FTP	4
 #define ROUTE_MGP	5
 
+#define MAP_SIZE 	26
+
 struct Dwarf
 {
 	std::string name;
@@ -24,15 +26,13 @@ struct Dwarf
 
 struct Edge
 {
-	char source;
 	char destination;
 	unsigned short int distance;
 	unsigned short int time; // Note: this is in minutes
 	unsigned short int coins;
 	unsigned short int trolls;
 	
-	Edge(char src, char dest, unsigned short int dist, unsigned short int ti, unsigned short int c, unsigned short int tr):
-	source(src),
+	Edge(char dest, unsigned short int dist, unsigned short int ti, unsigned short int c, unsigned short int tr):
 	destination(dest),
 	distance(dist),
 	time(ti),
@@ -44,7 +44,7 @@ struct Edge
 struct Node
 {
 	char location;
-	std::vector<Edge> edges;
+	std::vector<Edge> edges; // Connecting nodes share the same edge reference! Care when deleting!!!
 	
 	Node(char loc):
 	location(loc)
@@ -65,11 +65,11 @@ void route(int code);
 void dispayMessage(DwarfRouteMessage* drm);
 
 // Node*** is an array[26] as we have a max of 26 nodes*. This is implemented as a Hashmap, with the key being (loc - 'A'). Not a vector cause mapping the edges becomes expontentially long to do. 
-void routeAll(Node** map, Dwarf* dwarf);
-void routeSHP(Node** map, Dwarf* dwarf);
-void routeSDP(Node** map, Dwarf* dwarf);
-void routeSTP(Node** map, Dwarf* dwarf);
-void routeFTP(Node** map, Dwarf* dwarf);
-void routeMGP(Node** map, Dwarf* dwarf);
+void routeAll(Node** map, char meetNode, Dwarf* dwarf);
+void routeSHP(Node** map, char meetNode, Dwarf* dwarf);
+void routeSDP(Node** map, char meetNode, Dwarf* dwarf);
+void routeSTP(Node** map, char meetNode, Dwarf* dwarf);
+void routeFTP(Node** map, char meetNode, Dwarf* dwarf);
+void routeMGP(Node** map, char meetNode, Dwarf* dwarf);
 
 #endif
