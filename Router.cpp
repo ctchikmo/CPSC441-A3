@@ -9,6 +9,8 @@
 // Thanks @https://stackoverflow.com/questions/12774207/fastest-way-to-check-if-a-file-exist-using-standard-c-c11-c for file existance checking
 void route(int code)
 {
+	std::cout << "Please enter the name or path of the topology file" << std::endl;
+	
 	std::string topologyFileName;
 	while(std::getline(std::cin, topologyFileName))
 	{
@@ -38,7 +40,12 @@ void route(int code)
 		while(std::getline(topologyFile, line)) // Read in whole line, we expect 6 inputs on each line
 		{
 			// To understand how this whole section works look at: http://www.cplusplus.com/reference/cstring/strtok/ I used this instead of (ifstream >>) so that I could ignore \r, and could check lines. 
-			char* loc = std::strtok(line.c_str(), " \r\n");
+			char temp[line.size() + 1];
+			for(int i = 0; i < line.size(); i++)
+				temp[i] = line[i];
+			temp[line.size()] = '\0';
+			
+			char* loc = std::strtok(temp, " \r\n");
 			char* dest = std::strtok(NULL, " \r\n");
 			char* dist = std::strtok(NULL, " \r\n");
 			char* time = std::strtok(NULL, " \r\n");
@@ -55,8 +62,16 @@ void route(int code)
 			if(map[index] == NULL)
 				map[index] = new Node(loc[0]);
 			
-			map[index]->edges.push_back(Edge(dest[0], (unsigned short int)std::stoi(std::string(dist)), (unsigned short int)std::stoi(std::string(time)),
+			try
+			{
+				map[index]->edges.push_back(Edge(loc[0], dest[0], (unsigned short int)std::stoi(std::string(dist)), (unsigned short int)std::stoi(std::string(time)),
 											(unsigned short int)std::stoi(std::string(coins)), (unsigned short int)std::stoi(std::string(trolls))));
+			}
+			catch(...)
+			{
+				std::cout << "Error, line in topology file has invalid value." << std::endl << std::endl;
+				return;
+			}
 		}
 		
 		topologyFile.close();
@@ -66,7 +81,6 @@ void route(int code)
 		std::cout << "Error opening topology file." << std::endl << std::endl;
 		return;
 	}
-	
 	
 	std::string dwarfFileName;
 	while(std::getline(std::cin, dwarfFileName))
@@ -86,6 +100,54 @@ void route(int code)
 	std::cout << "Dwarf file found" << std::endl << std::endl;
 	
 	// Read in the dwarf file, ensure the house nodes all exist
+	std::ifstream dwarfFile(dwarfFileName); 
+	if(dwarfFile)
+	{
+		std::string line;
+		while(std::getline(topologyFile, line)) // Read in whole line, we expect 6 inputs on each line
+		{
+			// To understand how this whole section works look at: http://www.cplusplus.com/reference/cstring/strtok/ I used this instead of (ifstream >>) so that I could ignore \r, and could check lines. 
+			char temp[line.size() + 1];
+			for(int i = 0; i < line.size(); i++)
+				temp[i] = line[i];
+			temp[line.size()] = '\0';
+			
+			char* loc = std::strtok(temp, " \r\n");
+			char* dest = std::strtok(NULL, " \r\n");
+			char* dist = std::strtok(NULL, " \r\n");
+			char* time = std::strtok(NULL, " \r\n");
+			char* coins = std::strtok(NULL, " \r\n");
+			char* trolls = std::strtok(NULL, " \r\n");
+			
+			if(loc == NULL || loc[0] < 'A' || loc[0] > 'Z' || dest == NULL || dest[0] < 'A' || dest[0] > 'Z' || dist == NULL || time == NULL || coins == NULL || trolls == NULL)
+			{
+				std::cout << "Error, line in topology file has invalid value." << std::endl << std::endl;
+				return;
+			}
+			
+			unsigned char index = loc[0] - 'A';
+			if(map[index] == NULL)
+				map[index] = new Node(loc[0]);
+			
+			try
+			{
+				map[index]->edges.push_back(Edge(loc[0], dest[0], (unsigned short int)std::stoi(std::string(dist)), (unsigned short int)std::stoi(std::string(time)),
+											(unsigned short int)std::stoi(std::string(coins)), (unsigned short int)std::stoi(std::string(trolls))));
+			}
+			catch(...)
+			{
+				std::cout << "Error, line in topology file has invalid value." << std::endl << std::endl;
+				return;
+			}
+		}
+		
+		topologyFile.close();
+	}
+	else
+	{
+		std::cout << "Error opening dwarf file." << std::endl << std::endl;
+		return;
+	}
 }
 
 void dispayMessage(DwarfRouteMessage* drm)

@@ -24,13 +24,15 @@ struct Dwarf
 
 struct Edge
 {
+	char source;
 	char destination;
 	unsigned short int distance;
 	unsigned short int time; // Note: this is in minutes
 	unsigned short int coins;
 	unsigned short int trolls;
 	
-	Edge(char dest, unsigned short int dist, unsigned short int ti, unsigned short int c, unsigned short int tr):
+	Edge(char src, char dest, unsigned short int dist, unsigned short int ti, unsigned short int c, unsigned short int tr):
+	source(src),
 	destination(dest),
 	distance(dist),
 	time(ti),
