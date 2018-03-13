@@ -74,6 +74,7 @@ void help()
 {
 	std::cout << "Command List (lowercase only):" << std::endl;
 	std::cout << "+ 'help': Brings up this menu" << std::endl;
+	std::cout << "+ 'q': Exit the program" << std::endl;
 	std::cout << "+ 'all': Start traversal using all algorithms (asks for file names on use)" << std::endl;
 	std::cout << "+ 'shp': Start traversal using the shortest hop path (asks for file names on use)" << std::endl;
 	std::cout << "+ 'sdp': Start traversal using the shortest distance path (asks for file names on use)" << std::endl;
