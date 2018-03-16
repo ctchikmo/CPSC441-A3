@@ -3,10 +3,9 @@
 #include <unistd.h> // Unix standard lib
 #include <fstream>
 #include <cstring>
+#include <climits> // MAX values for data types
 
 #include "Router.h"
-
-#define USI unsigned short int
 
 // Thanks @https://stackoverflow.com/questions/12774207/fastest-way-to-check-if-a-file-exist-using-standard-c-c11-c for file existance checking
 void route(int code)
@@ -60,18 +59,19 @@ void route(int code)
 				return;
 			}
 			
-			unsigned char host1Index = host1[0] - 'A';
+			USI host1Index = host1[0] - 'A';
 			if(map[host1Index] == NULL)
-				map[host1Index] = new Node(host1[0]);
+				map[host1Index] = new Node(host1Index);
 			
-			unsigned char host2Index = host2[0] - 'A';
+			USI host2Index = host2[0] - 'A';
 			if(map[host2Index] == NULL)
-				map[host2Index] = new Node(host2[0]);
+				map[host2Index] = new Node(host2Index);
 			
 			try
 			{
-				map[host1Index]->edges.push_back(Edge(host2[0], (USI)std::stoi(std::string(dist)), (USI)std::stoi(std::string(time)), (USI)std::stoi(std::string(coins)), (USI)std::stoi(std::string(trolls))));
-				map[host2Index]->edges.push_back(Edge(host1[0], (USI)std::stoi(std::string(dist)), (USI)std::stoi(std::string(time)), (USI)std::stoi(std::string(coins)), (USI)std::stoi(std::string(trolls))));
+				Edge* edge = new Edge(host1Index, host2Index, (USI)std::stoi(std::string(dist)), (USI)std::stoi(std::string(time)), (USI)std::stoi(std::string(coins)), (USI)std::stoi(std::string(trolls)));
+				map[host1Index]->edges.push_back(edge);
+				map[host2Index]->edges.push_back(edge);
 			}
 			catch(...)
 			{
@@ -172,7 +172,7 @@ void route(int code)
 		}			
 		return;
 	}
-	std::cout << "Routing everyone to " << dwarfMeetHouseName << "'s house" << std::endl;
+	std::cout << "Routing everyone to " << dwarfMeetHouseName << "'s house" << std::endl << std::endl;
 	
 	// Call the appropriate route method.
 	switch(code)
@@ -208,7 +208,7 @@ void route(int code)
 			break;
 	}
 	
-	// Delete dynamic memory
+	// Delete dynamic memory, deletion of edges is handled by the node. 
 	for(unsigned int i = 0; i < MAP_SIZE; i++)
 		delete map[i];
 }
@@ -220,12 +220,45 @@ void dispayMessage(DwarfRouteMessage* drm)
 
 void routeAll(Node** map, char meetNode, Dwarf* dwarf)
 {
-	
+	routeSHP(map, meetNode, dwarf);
+	routeSDP(map, meetNode, dwarf);
+	routeSTP(map, meetNode, dwarf);
+	routeFTP(map, meetNode, dwarf);
+	routeMGP(map, meetNode, dwarf);
 }
 
 void routeSHP(Node** map, char meetNode, Dwarf* dwarf)
 {
+	recursivePathFinder(map, (USI)(meetNode - 'A'), (USI)(dwarf->location - 'A'), NULL, greedAlgSHP, true);
+	std::cout << std::endl;
+}
+
+GreedResponse greedSHP(Edge* edgeTakenToCurrentNode, std::vector<GreedResponse>* responsesForPathsFromCurrentNode, USI currentNodeIndex)
+{
+	GreedResponse* bestResponseFromVec = NULL;
 	
+	if(responsesForPathsFromCurrentNode->size() > 0)
+	{
+		bestResponseFromVec = &((*responsesForPathsFromCurrentNode)[i]);
+		for(int i = 1; i < responsesForPathsFromCurrentNode->size(); i++)
+			if((*responsesForPathsFromCurrentNode)[i]->greedValue < bestResponseFromVec->greedValue)
+				bestResponseFromVec = &((*responsesForPathsFromCurrentNode)[i]);
+	}
+	
+	if(bestResponseFromVec != NULL)
+	{
+		// bestResponseFromVec already has the previous nodes best values, so now we just add our edge values
+		bestResponseFromVec->greedValue += 1; // 1 Hop
+		bestResponseFromVec->greedPath.push_back(currentNodeIndex);
+		return *bestResponseFromVec;
+	}
+	else // This case happens at the last node. 
+	{
+		GreedResponse rv;
+		rv.greedValue = 1; // 1 Hop to get to this edge
+		rv.greedPath.push_back(currentNodeIndex);
+		return rv;
+	}
 }
 
 void routeSDP(Node** map, char meetNode, Dwarf* dwarf)
@@ -247,6 +280,51 @@ void routeMGP(Node** map, char meetNode, Dwarf* dwarf)
 {
 	
 }
+
+GreedResponse recursivePathFinder(Node** map, USI meetNodeIndex, USI currentNodeIndex, Edge* edgeTaken, GreedResponse (*greedFunction)(Edge*, std::vector<GreedResponse>*, USI), bool stopAtDest)
+{
+	std::cout << (char)(currentNodeIndex + 'A') << std::endl;
+	
+	std::vector<GreedResponse> greedResponses; // Each unique next node reachable from this path will insert a response here. We pick which to use via the greed function
+	if(stopAtDest && map[currentNodeIndex]->location == meetNodeIndex)
+	{
+		// The if below is not included in the if above as I don't want to go into the else in the case that the edgeTaken != NULL
+		if(edgeTaken == NULL) // Edge taken is only null if its the first call (so not a recursive call). This means no path is needed, we started on the node destination.
+			return NULL;
+	}
+	else
+	{
+		for(unsigned int i = 0; i < map[currentNodeIndex]->edges.size(); i++)
+		{
+			// Take the edge if it is not taken
+			if(!map[currentNodeIndex]->edges[i]->taken)
+			{
+				map[currentNodeIndex]->edges[i]->taken = true;
+				greedResponses.push_back(recursivePathFinder(map, meetNodeIndex, followEdgeIndex(map[currentNodeIndex], map[currentNodeIndex]->edges[i])));
+			
+				// We are back from all of the possible ways taking the above edge can go, so unmark it as taken so the next edge from this node can path back through it, if it is a possible path.
+				map[currentNodeIndex]->edges[i]->taken = false;
+			}
+		}
+	}
+	
+	return greedFunction(edge, &greedResponses, currentNodeIndex);
+}
+
+int followEdgeIndex(Node* nodeOn, Edge* edgeTake)
+{
+	if(nodeOn->locationIndex == edgeTake->host1)
+		return edgeTake->host2;
+	
+	return edgeTake->host1;
+}
+
+
+
+
+
+
+
 
 
 
