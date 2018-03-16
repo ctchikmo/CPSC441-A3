@@ -88,22 +88,17 @@ struct GreedResponse
 };
 
 void route(int code);
-void dispayMessage(DwarfRouteMessage* drm);
-
-// Node*** is an array[26] as we have a max of 26 nodes*. This is implemented as a Hashmap, with the key being (loc - 'A'). Not a vector cause mapping the edges becomes expontentially long to do. 
-void routeAll(Node** map, char meetNode, Dwarf* dwarf);
-void routeSHP(Node** map, char meetNode, Dwarf* dwarf);
-void routeSDP(Node** map, char meetNode, Dwarf* dwarf);
-void routeSTP(Node** map, char meetNode, Dwarf* dwarf);
-void routeFTP(Node** map, char meetNode, Dwarf* dwarf);
-void routeMGP(Node** map, char meetNode, Dwarf* dwarf);
 
 // The greed algorithm picks the best response to use from the vector, then adds the edge cost to get to the node holding that vector.
 // The case of there being no path should never occur as due to the assumptions listed in the assignment document
-GreedResponse greedSHP(Edge* edgeTakenToCurrentNode, std::vector<GreedResponse>* responsesForPathsFromCurrentNode, USI currentNodeIndex, USI destIndex);
+GreedResponse greedAlgorithm(Edge* edgeTakenToCurrentNode, std::vector<GreedResponse>* responsesForPathsFromCurrentNode, USI currentNodeIndex, USI destIndex, USI algCode);
 
-// We return the greedy sum of what the best path for the given greedy function is from the node, plus the cost to get to the node.
-GreedResponse recursivePathFinder(Node** map, USI meetNodeIndex, USI currentNodeIndex, Edge* edgeTaken, GreedResponse (*greedFunction)(Edge*, std::vector<GreedResponse>*, USI, USI), bool stopAtDest); 
+// We return the greedy sum of what the best path for the given greedy function is from the node (determined by aglCode), plus the cost to get to the node.
+GreedResponse recursivePathFinder(Node** map, USI meetNodeIndex, USI currentNodeIndex, Edge* edgeTaken, USI algCode, bool stopAtDest); 
 int followEdgeIndex(Node* nodeOn, Edge* edgeTake);
+
+// Note: for both of these ROUTE_ALL is not a valid code (no checks, just don't use it!)
+unsigned int getEdgeGreedValue(Edge* edge, USI algCode);
+bool compareGreedValues(unsigned int pathToCheckGV, unsigned int bestGV, USI algCode);
 
 #endif
