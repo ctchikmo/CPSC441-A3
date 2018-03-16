@@ -83,7 +83,7 @@ struct DwarfRouteMessage
 
 struct GreedResponse
 {
-	std::vector<USI> greedPath; // Note: this needs to be read in reverse as recursion builds it from the end to the start
+	std::vector<USI> greedPath; // Note: this needs to be read in reverse as recursion builds it from the end to the start, also the path MUST end in the desired destination node
 	unsigned int greedValue;
 };
 
@@ -99,10 +99,11 @@ void routeFTP(Node** map, char meetNode, Dwarf* dwarf);
 void routeMGP(Node** map, char meetNode, Dwarf* dwarf);
 
 // The greed algorithm picks the best response to use from the vector, then adds the edge cost to get to the node holding that vector.
-GreedResponse greedSHP(Edge* edgeTakenToCurrentNode, std::vector<GreedResponse>* responsesForPathsFromCurrentNode, USI currentNodeIndex);
+// The case of there being no path should never occur as due to the assumptions listed in the assignment document
+GreedResponse greedSHP(Edge* edgeTakenToCurrentNode, std::vector<GreedResponse>* responsesForPathsFromCurrentNode, USI currentNodeIndex, USI destIndex);
 
 // We return the greedy sum of what the best path for the given greedy function is from the node, plus the cost to get to the node.
-GreedResponse recursivePathFinder(Node** map, USI meetNodeIndex, USI currentNodeIndex, Edge* edgeTaken, GreedResponse (*greedFunction)(Edge*, std::vector<GreedResponse>*, USI), bool stopAtDest); 
+GreedResponse recursivePathFinder(Node** map, USI meetNodeIndex, USI currentNodeIndex, Edge* edgeTaken, GreedResponse (*greedFunction)(Edge*, std::vector<GreedResponse>*, USI, USI), bool stopAtDest); 
 int followEdgeIndex(Node* nodeOn, Edge* edgeTake);
 
 #endif

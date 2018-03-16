@@ -7,6 +7,12 @@
 #define CODE_GOOD 		1
 #define CODE_QUIT		2
 
+/*
+* MAJOR ASSUMPTION
+* + Given the assignments description of graph theory, there will never be an isolated node, thus the case of being unable to reach the destination will never occur. 
+*	However, nodes may contain any number of paths which can not reach the destination, but one that can will always exist. 
+*/
+
 int handleCommand(std::string input);
 void help();
 

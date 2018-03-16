@@ -229,36 +229,50 @@ void routeAll(Node** map, char meetNode, Dwarf* dwarf)
 
 void routeSHP(Node** map, char meetNode, Dwarf* dwarf)
 {
-	recursivePathFinder(map, (USI)(meetNode - 'A'), (USI)(dwarf->location - 'A'), NULL, greedAlgSHP, true);
+	GreedResponse rv = recursivePathFinder(map, (USI)(meetNode - 'A'), (USI)(dwarf->location - 'A'), NULL, greedSHP, true);
+	
+	// We started at the node
+	if(rv.greedPath.size() == 0)
+		std::cout << dwarf->name << "path: started at the destination.";
+	
+	std::cout << dwarf->name << " path: ";
+	for(int i = rv.greedPath.size() - 1; i >= 0; i--) // Not unsigned, cause if size is 0 than we fault ( 0 - 1 == USINT MAX)
+		std::cout << (char)(rv.greedPath[i] + 'A') << ' ';
 	std::cout << std::endl;
 }
 
-GreedResponse greedSHP(Edge* edgeTakenToCurrentNode, std::vector<GreedResponse>* responsesForPathsFromCurrentNode, USI currentNodeIndex)
+GreedResponse greedSHP(Edge* edgeTakenToCurrentNode, std::vector<GreedResponse>* responsesForPathsFromCurrentNode, USI currentNodeIndex, USI destIndex)
 {
-	GreedResponse* bestResponseFromVec = NULL;
-	
 	if(responsesForPathsFromCurrentNode->size() > 0)
 	{
-		bestResponseFromVec = &((*responsesForPathsFromCurrentNode)[i]);
-		for(int i = 1; i < responsesForPathsFromCurrentNode->size(); i++)
-			if((*responsesForPathsFromCurrentNode)[i]->greedValue < bestResponseFromVec->greedValue)
+		GreedResponse* bestResponseFromVec = NULL;
+		unsigned int i = 0;
+		
+		// This loop picks the initial response to compare to, must be done like this not picking [0] so that we don't pick a response that doesnt end in the dest accidentily. 
+		for(; i < responsesForPathsFromCurrentNode->size() && bestResponseFromVec == NULL; i++)
+			if((((*responsesForPathsFromCurrentNode)[i]).greedPath[0] == destIndex))
 				bestResponseFromVec = &((*responsesForPathsFromCurrentNode)[i]);
+		
+		// Pick the best response from the remaining depending on the greed factor
+		// MUST END AT DEST, greed method is called end backwards, so this is always possible (also the dest is first index as this is done in reverse!!!)
+		for(; i < responsesForPathsFromCurrentNode->size(); i++)
+			if(((*responsesForPathsFromCurrentNode)[i].greedValue < bestResponseFromVec->greedValue) && (((*responsesForPathsFromCurrentNode)[i]).greedPath[0] == destIndex))
+				bestResponseFromVec = &((*responsesForPathsFromCurrentNode)[i]);
+			
+		if(bestResponseFromVec != NULL)
+		{
+			// bestResponseFromVec already has the previous nodes best values, so now we just add our edge values
+			bestResponseFromVec->greedValue += 1; // 1 Hop
+			bestResponseFromVec->greedPath.push_back(currentNodeIndex);
+			return *bestResponseFromVec;
+		}
 	}
 	
-	if(bestResponseFromVec != NULL)
-	{
-		// bestResponseFromVec already has the previous nodes best values, so now we just add our edge values
-		bestResponseFromVec->greedValue += 1; // 1 Hop
-		bestResponseFromVec->greedPath.push_back(currentNodeIndex);
-		return *bestResponseFromVec;
-	}
-	else // This case happens at the last node. 
-	{
-		GreedResponse rv;
-		rv.greedValue = 1; // 1 Hop to get to this edge
-		rv.greedPath.push_back(currentNodeIndex);
-		return rv;
-	}
+	// This case happens at the last node. 
+	GreedResponse rv;
+	rv.greedValue = 1; // 1 Hop to get to this edge
+	rv.greedPath.push_back(currentNodeIndex);
+	return rv;
 }
 
 void routeSDP(Node** map, char meetNode, Dwarf* dwarf)
@@ -281,16 +295,17 @@ void routeMGP(Node** map, char meetNode, Dwarf* dwarf)
 	
 }
 
-GreedResponse recursivePathFinder(Node** map, USI meetNodeIndex, USI currentNodeIndex, Edge* edgeTaken, GreedResponse (*greedFunction)(Edge*, std::vector<GreedResponse>*, USI), bool stopAtDest)
-{
-	std::cout << (char)(currentNodeIndex + 'A') << std::endl;
-	
+GreedResponse recursivePathFinder(Node** map, USI meetNodeIndex, USI currentNodeIndex, Edge* edgeTaken, GreedResponse (*greedFunction)(Edge*, std::vector<GreedResponse>*, USI, USI), bool stopAtDest)
+{	
 	std::vector<GreedResponse> greedResponses; // Each unique next node reachable from this path will insert a response here. We pick which to use via the greed function
-	if(stopAtDest && map[currentNodeIndex]->location == meetNodeIndex)
+	if(stopAtDest && map[currentNodeIndex]->locationIndex == meetNodeIndex)
 	{
 		// The if below is not included in the if above as I don't want to go into the else in the case that the edgeTaken != NULL
 		if(edgeTaken == NULL) // Edge taken is only null if its the first call (so not a recursive call). This means no path is needed, we started on the node destination.
-			return NULL;
+		{
+			GreedResponse startAtDestResp; // NOTE: if this case happens, the returned array size for the path will be 0. Therefore we went no where.
+			return startAtDestResp;
+		}
 	}
 	else
 	{
@@ -300,7 +315,7 @@ GreedResponse recursivePathFinder(Node** map, USI meetNodeIndex, USI currentNode
 			if(!map[currentNodeIndex]->edges[i]->taken)
 			{
 				map[currentNodeIndex]->edges[i]->taken = true;
-				greedResponses.push_back(recursivePathFinder(map, meetNodeIndex, followEdgeIndex(map[currentNodeIndex], map[currentNodeIndex]->edges[i])));
+				greedResponses.push_back(recursivePathFinder(map, meetNodeIndex, followEdgeIndex(map[currentNodeIndex], map[currentNodeIndex]->edges[i]), map[currentNodeIndex]->edges[i], greedFunction, stopAtDest));
 			
 				// We are back from all of the possible ways taking the above edge can go, so unmark it as taken so the next edge from this node can path back through it, if it is a possible path.
 				map[currentNodeIndex]->edges[i]->taken = false;
@@ -308,7 +323,7 @@ GreedResponse recursivePathFinder(Node** map, USI meetNodeIndex, USI currentNode
 		}
 	}
 	
-	return greedFunction(edge, &greedResponses, currentNodeIndex);
+	return greedFunction(edgeTaken, &greedResponses, currentNodeIndex, meetNodeIndex);
 }
 
 int followEdgeIndex(Node* nodeOn, Edge* edgeTake)
