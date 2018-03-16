@@ -185,7 +185,7 @@ void route(int code)
 	{
 		for(unsigned int i = 0; i < dwarfs.size(); i++) 
 		{
-			dwarfResponses.push_back(recursivePathFinder(map, meetNodeIndex, (USI)(dwarfs[i].location - 'A'), NULL, code, true));
+			dwarfResponses.push_back(recursivePathFinder(map, meetNodeIndex, (USI)(dwarfs[i].location - 'A'), NULL, code, code != ROUTE_MGP)); // Only MGP has no stop at dest rule
 		}
 	}
 	
@@ -271,7 +271,7 @@ GreedResponse recursivePathFinder(Node** map, USI meetNodeIndex, USI currentNode
 		}
 	}
 	
-	return greedAlgorithm(edgeTaken, &greedResponses, currentNodeIndex, meetNodeIndex, algCode);
+	return greedAlgorithm(edgeTaken, &greedResponses, currentNodeIndex, meetNodeIndex, algCode); // Note that edgeTaken can be NULL here!
 }
 
 int followEdgeIndex(Node* nodeOn, Edge* edgeTake)
@@ -284,6 +284,10 @@ int followEdgeIndex(Node* nodeOn, Edge* edgeTake)
 
 unsigned int getEdgeGreedValue(Edge* edge, USI algCode)
 {
+	// edge can be NULL!
+	if(edge == NULL)
+		return 0; // The first node (that dwarf start node) is the only one with a NULL edge, which makes sense as no edge was taken to get there, so the rv does not matter. 
+	
 	switch(algCode)
 	{
 		case ROUTE_SHP:
