@@ -5,6 +5,8 @@
 #include <cstring>
 #include <climits> // MAX values for data types
 #include <list>
+#include <iomanip> // setprecision
+#include <sstream> // stringstream
 
 #include "Router.h"
 
@@ -96,7 +98,7 @@ void route(int code)
 		return;
 	}
 	
-	std::cout << "Please enter the name or path to the dwarf file" << std::endl;
+	std::cout << "Please enter the name or path to the starting locations file" << std::endl;
 	
 	std::string dwarfFileName;
 	while(std::getline(std::cin, dwarfFileName))
@@ -113,7 +115,7 @@ void route(int code)
 		else
 			std::cout << "Could not find file, try again or enter 'q' to stop" << std::endl;
 	}
-	std::cout << "Dwarf file found" << std::endl << std::endl;
+	std::cout << "Starting locations file found" << std::endl << std::endl;
 	
 	std::vector<Dwarf> dwarfs;
 	
@@ -160,7 +162,7 @@ void route(int code)
 	// Get the dwarfs house to meet at, default to Bilbo
 	std::string dwarfMeetHouseName;
 	
-	std::cout << "Please enter the name of the dwarf whose house everyone should meet at. (Defaults to Bilbo if the name is invalid)" << std::endl;
+	std::cout << "Please enter the name of the individual whose house everyone should meet at. (Defaults to Bilbo if the name is invalid)" << std::endl;
 	std::getline(std::cin, dwarfMeetHouseName);
 	
 	Label_getDwarfMeetLocation: // NOTICE THIS LABEL, IT CONNECTS TO THE GOTO IN THE SINGLE IF AFTER THIS FOR LOOP
@@ -171,7 +173,7 @@ void route(int code)
 		
 	if(dwarfMeetNode == '\0')
 	{
-		std::cout << "Could not find the dwarf with the name: " << dwarfMeetHouseName << std::endl << std::endl;
+		std::cout << "Could not find the individual with the name: " << dwarfMeetHouseName << std::endl << std::endl;
 		if(dwarfMeetHouseName.compare("Bilbo") != 0) // Bilbo was not entered, check again using Bilbo (NOTICE THE GOTO!!!!!)
 		{
 			std::cout << "Name entered was not found, and did not exactly match \"Bilbo\". Defaulting to Bilbo" << std::endl;
@@ -200,20 +202,7 @@ void route(int code)
 			dwarfResponses.push_back(responseMap[(USI)(dwarfs[i].location - 'A')]);
 	}
 	
-	for(unsigned int d = 0; d < dwarfResponses.size(); d++)
-	{
-		// We started at the node
-		if(dwarfResponses[d].valuePath.size() == 1)
-		{
-			std::cout << dwarfs[d].name << " path: started at the destination." << std::endl; // dwarfs and dwarfResponses have the same size
-			continue;
-		}
-		
-		std::cout << dwarfs[d].name << " path: ";
-		for(int i = dwarfResponses[d].valuePath.size() - 1; i >= 0; i--) // Not unsigned, cause if size is 0 than we fault ( 0 - 1 == USINT MAX)
-			std::cout << (char)(dwarfResponses[d].valuePath[i] + 'A') << ' ';
-		std::cout << std::endl;
-	}
+	printResults(&dwarfResponses, &dwarfs, dwarfMeetHouseName);
 	
 	// Delete dynamic memory, deletion of edges is handled by the node. 
 	for(unsigned int i = 0; i < MAP_SIZE; i++)
@@ -352,7 +341,159 @@ unsigned int getEdgevalue(Edge* edge)
 	return 1; // This should never be reached. 
 }
 
+void printResults(std::vector<NodeValue>* dwarfResponses, std::vector<Dwarf>* dwarfs, std::string dwarfMeetHouseName)
+{
+	std::cout << std::endl << std::endl;
+	switch(algCode)
+	{
+		case ROUTE_SHP:
+			std::cout << "Shortest Hop Path (SHP) Results:" << std::endl;
+			break;
+			
+		case ROUTE_SDP:
+			std::cout << "Shortest Distance Path (SDP) Results" << std::endl;
+			break;
+			
+		case ROUTE_STP:
+			std::cout << "Shortest Time Path (STP) Results" << std::endl;
+			break;
+			
+		case ROUTE_FTP:
+			std::cout << "Fewest Trolls Path (FTP) Results" << std::endl;
+			break;
+			
+		case ROUTE_MGP:
+			std::cout << "Most Gold Path (MGP) Results" << std::endl;
+			break;
+	}
+	std::cout << "Destination was " << dwarfMeetHouseName << "'s house" << std::endl << std::endl;
+	
+	outputFormattedColCentered("Dwarf");
+	outputFormattedColCentered("Home");
+	outputFormattedColCentered("Hops");
+	outputFormattedColCentered("Dist");
+	outputFormattedColCentered("Time");
+	outputFormattedColCentered("Gold");
+	outputFormattedColCentered("Trolls");
+	outputFormattedColCentered("Path");
+	std::cout << std::endl;
+	for(int i = 0; i < 9; i++)
+		for(int j = 0; j < OUTPUT_COL_WIDTH; j++)
+			std::cout << '-';
+	std::cout << std::endl;
+	
+	double hopsTotal = 0;
+	double distTotal = 0;
+	double timeTotal = 0;
+	double coinsTotal = 0;
+	double trollsTotal = 0;
+	
+	double dwarfCount = (*dwarfResponses).size() - 1; // The home owner / convergence point person does not get a say in the final average (the loop has +1 cause checking who it is heavier than doing +1)
+	for(unsigned int d = 0; d < dwarfCount + 1; d++)
+	{
+		std::string home = "";
+		home += (*dwarfs)[d].location;
+		int hops = (*dwarfResponses)[d].valuePath.size() - 1;
+		int dist = 0;
+		int time = 0;
+		int coins = 0;
+		int trolls = 0;
+		std::string path = "";
+		
+		path += (char)('A' + (*dwarfResponses)[d].valuePath[hops]);
+		path += ' ';
+		for(int i = hops - 1; i >= 0; i--) // Not unsigned, cause if size is 0 than we fault ( 0 - 1 == USINT MAX)
+		{
+			USI prevNode = (*dwarfResponses)[d].valuePath[i + 1];
+			USI onNode = (*dwarfResponses)[d].valuePath[i];
+			Edge* edge;
+			for(unsigned int e = 0; e < map[prevNode]->edges.size(); e++)
+			{
+				if(map[prevNode]->edges[e]->host1 == onNode || map[prevNode]->edges[e]->host2 == onNode)
+				{
+					edge = map[prevNode]->edges[e];
+					break;
+				}
+			}
+			
+			dist += edge->distance;
+			time += edge->time;
+			coins += edge->coins;
+			trolls += edge->trolls;
+			path += (char)('A' + (*dwarfResponses)[d].valuePath[i]);
+			path += ' ';
+		}
+		
+		outputFormattedColCentered((*dwarfs)[d].name);
+		outputFormattedColCentered(home);
+		outputFormattedColRight(std::to_string(hops));
+		outputFormattedColRight(std::to_string(dist));
+		outputFormattedColRight(std::to_string(time));
+		outputFormattedColRight(std::to_string(coins));
+		outputFormattedColRight(std::to_string(trolls));
+		outputFormattedColCentered(path);
+		std::cout << std::endl;
+		
+		hopsTotal += hops;
+		distTotal += dist;
+		timeTotal += time;
+		coinsTotal += coins;
+		trollsTotal += trolls;
+	}
+	
+	for(int i = 0; i < 9; i++)
+		for(int j = 0; j < OUTPUT_COL_WIDTH; j++)
+			std::cout << '-';
+	std::cout << std::endl;
+	
+	
+	
+	outputFormattedColCentered("Average: ");
+	outputFormattedColCentered(""); // No average home value
+	outputFormattedColRight(doubleOutput(hopsTotal / dwarfCount));
+	outputFormattedColRight(doubleOutput(distTotal / dwarfCount));
+	outputFormattedColRight(doubleOutput(timeTotal / dwarfCount));
+	outputFormattedColRight(doubleOutput(coinsTotal / dwarfCount));
+	outputFormattedColRight(doubleOutput(trollsTotal / dwarfCount));
+	
+	std::cout << std::endl;
+}
 
+std::string doubleOutput(double d)
+{
+	// Thanks @https://stackoverflow.com/questions/29200635/convert-float-to-string-with-set-precision-number-of-decimal-digits for formatting decimals
+	std::stringstream stream;
+	stream << std::fixed << std::setprecision(DOUBLE_STRING_PRECISION) << d;
+	return stream.str();
+}
+
+void outputFormattedColCentered(std::string value)
+{
+	std::cout << value;
+	for(int i = value.size(); i <= OUTPUT_COL_WIDTH; i++)
+		std::cout << ' ';
+}
+
+void outputFormattedColCentered(std::string value)
+{
+	int spaces = (OUTPUT_COL_WIDTH - value.size())/2;
+	
+	for(int i = 0; i <= spaces; i++)
+		std::cout << ' ';
+	
+	std::cout << value;
+	
+	for(int i = value.size(); i <= spaces; i++)
+		std::cout << ' ';
+	
+}
+
+void outputFormattedColRight(std::string value)
+{
+	for(int i = value.size(); i <= OUTPUT_COL_WIDTH; i++)
+		std::cout << ' ';
+	std::cout << value;
+}
 
 
 

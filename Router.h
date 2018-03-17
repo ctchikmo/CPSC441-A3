@@ -10,6 +10,9 @@
 #define ROUTE_FTP	4
 #define ROUTE_MGP	5
 
+#define OUTPUT_COL_WIDTH 		10
+#define DOUBLE_STRING_PRECISION 2
+
 #define MAP_SIZE 	26
 #define USI unsigned short int
 
@@ -86,5 +89,9 @@ NodeValue greedAlgorithm(Edge* edgeTakenToCurrentNode, std::vector<NodeValue>* r
 
 USI followEdgeIndex(Node* nodeOn, Edge* edgeTake);
 unsigned int getEdgevalue(Edge* edge);
+
+void printResults(std::vector<NodeValue>* dwarfResponses, std::vector<Dwarf>* dwarfs, std::string dwarfMeetHouseName);
+std::string doubleOutput(double d);
+void outputFormattedColCentered(std::string value);
 
 #endif
