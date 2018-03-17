@@ -239,8 +239,11 @@ void routeDij(NodeValue* responseMap)
 		nodeList.erase(itErase);
 		for(unsigned int i = 0; i < nodeMin->edges.size(); i++)
 		{
-			unsigned int takeEdgeNewTotal = responseMap[nodeMin->locationIndex].value + getEdgevalue(nodeMin->edges[i]);
+			// Do not mark nodes as processed, im doing destination as soruce, so it messes up if you do this. 
+			
 			USI followNodeIndex = followEdgeIndex(nodeMin, nodeMin->edges[i]);
+			unsigned int takeEdgeNewTotal = responseMap[nodeMin->locationIndex].value + getEdgevalue(nodeMin->edges[i]);
+			
 			if(takeEdgeNewTotal < responseMap[followNodeIndex].value)
 			{
 				responseMap[followNodeIndex].valuePath.clear();
