@@ -162,7 +162,7 @@ void route(int code)
 	// Get the dwarfs house to meet at, default to Bilbo
 	std::string dwarfMeetHouseName;
 	
-	std::cout << "Please enter the name of the individual whose house everyone should meet at. (Defaults to Bilbo if the name is invalid)" << std::endl;
+	std::cout << "Please enter the indivudals name that everyone will go to. (Defaults to Bilbo if the name is invalid)" << std::endl;
 	std::getline(std::cin, dwarfMeetHouseName);
 	
 	Label_getDwarfMeetLocation: // NOTICE THIS LABEL, IT CONNECTS TO THE GOTO IN THE SINGLE IF AFTER THIS FOR LOOP
@@ -343,7 +343,6 @@ unsigned int getEdgevalue(Edge* edge)
 
 void printResults(std::vector<NodeValue>* dwarfResponses, std::vector<Dwarf>* dwarfs, std::string dwarfMeetHouseName)
 {
-	std::cout << std::endl << std::endl;
 	switch(algCode)
 	{
 		case ROUTE_SHP:
@@ -375,10 +374,10 @@ void printResults(std::vector<NodeValue>* dwarfResponses, std::vector<Dwarf>* dw
 	outputFormattedColCentered("Time");
 	outputFormattedColCentered("Gold");
 	outputFormattedColCentered("Trolls");
-	outputFormattedColCentered("Path");
+	outputFormattedColLeft("      Path");
 	std::cout << std::endl;
-	for(int i = 0; i < 9; i++)
-		for(int j = 0; j < OUTPUT_COL_WIDTH; j++)
+	for(int i = 0; i < 8; i++)
+		for(int j = 0; j < OUTPUT_COL_WIDTH + 2; j++)
 			std::cout << '-';
 	std::cout << std::endl;
 	
@@ -398,7 +397,7 @@ void printResults(std::vector<NodeValue>* dwarfResponses, std::vector<Dwarf>* dw
 		int time = 0;
 		int coins = 0;
 		int trolls = 0;
-		std::string path = "";
+		std::string path = "      ";
 		
 		path += (char)('A' + (*dwarfResponses)[d].valuePath[hops]);
 		path += ' ';
@@ -426,12 +425,12 @@ void printResults(std::vector<NodeValue>* dwarfResponses, std::vector<Dwarf>* dw
 		
 		outputFormattedColCentered((*dwarfs)[d].name);
 		outputFormattedColCentered(home);
-		outputFormattedColRight(std::to_string(hops));
-		outputFormattedColRight(std::to_string(dist));
-		outputFormattedColRight(std::to_string(time));
-		outputFormattedColRight(std::to_string(coins));
-		outputFormattedColRight(std::to_string(trolls));
-		outputFormattedColCentered(path);
+		outputFormattedColCentered(std::to_string(hops));
+		outputFormattedColCentered(std::to_string(dist));
+		outputFormattedColCentered(std::to_string(time));
+		outputFormattedColCentered(std::to_string(coins));
+		outputFormattedColCentered(std::to_string(trolls));
+		outputFormattedColLeft(path);
 		std::cout << std::endl;
 		
 		hopsTotal += hops;
@@ -441,20 +440,18 @@ void printResults(std::vector<NodeValue>* dwarfResponses, std::vector<Dwarf>* dw
 		trollsTotal += trolls;
 	}
 	
-	for(int i = 0; i < 9; i++)
-		for(int j = 0; j < OUTPUT_COL_WIDTH; j++)
+	for(int i = 0; i < 8; i++)
+		for(int j = 0; j < OUTPUT_COL_WIDTH + 2; j++)
 			std::cout << '-';
 	std::cout << std::endl;
 	
-	
-	
 	outputFormattedColCentered("Average: ");
 	outputFormattedColCentered(""); // No average home value
-	outputFormattedColRight(doubleOutput(hopsTotal / dwarfCount));
-	outputFormattedColRight(doubleOutput(distTotal / dwarfCount));
-	outputFormattedColRight(doubleOutput(timeTotal / dwarfCount));
-	outputFormattedColRight(doubleOutput(coinsTotal / dwarfCount));
-	outputFormattedColRight(doubleOutput(trollsTotal / dwarfCount));
+	outputFormattedColCentered(doubleOutput(hopsTotal / dwarfCount));
+	outputFormattedColCentered(doubleOutput(distTotal / dwarfCount));
+	outputFormattedColCentered(doubleOutput(timeTotal / dwarfCount));
+	outputFormattedColCentered(doubleOutput(coinsTotal / dwarfCount));
+	outputFormattedColCentered(doubleOutput(trollsTotal / dwarfCount));
 	
 	std::cout << std::endl;
 }
@@ -467,7 +464,7 @@ std::string doubleOutput(double d)
 	return stream.str();
 }
 
-void outputFormattedColCentered(std::string value)
+void outputFormattedColLeft(std::string value)
 {
 	std::cout << value;
 	for(int i = value.size(); i <= OUTPUT_COL_WIDTH; i++)
@@ -476,16 +473,15 @@ void outputFormattedColCentered(std::string value)
 
 void outputFormattedColCentered(std::string value)
 {
-	int spaces = (OUTPUT_COL_WIDTH - value.size())/2;
+	int spaces = (OUTPUT_COL_WIDTH - value.size()) / 2;
 	
-	for(int i = 0; i <= spaces; i++)
+	for(int i = 0; i < spaces; i++)
 		std::cout << ' ';
 	
 	std::cout << value;
 	
-	for(int i = value.size(); i <= spaces; i++)
+	for(int i = value.size() + spaces; i <= OUTPUT_COL_WIDTH; i++)
 		std::cout << ' ';
-	
 }
 
 void outputFormattedColRight(std::string value)

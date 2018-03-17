@@ -10,7 +10,7 @@
 #define ROUTE_FTP	4
 #define ROUTE_MGP	5
 
-#define OUTPUT_COL_WIDTH 		10
+#define OUTPUT_COL_WIDTH 		8 // 8 is the lowest it can go
 #define DOUBLE_STRING_PRECISION 2
 
 #define MAP_SIZE 	26
@@ -92,6 +92,8 @@ unsigned int getEdgevalue(Edge* edge);
 
 void printResults(std::vector<NodeValue>* dwarfResponses, std::vector<Dwarf>* dwarfs, std::string dwarfMeetHouseName);
 std::string doubleOutput(double d);
+void outputFormattedColLeft(std::string value);
 void outputFormattedColCentered(std::string value);
+void outputFormattedColRight(std::string value);
 
 #endif
