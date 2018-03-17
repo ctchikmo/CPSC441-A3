@@ -203,7 +203,7 @@ void route(int code)
 	for(unsigned int d = 0; d < dwarfResponses.size(); d++)
 	{
 		// We started at the node
-		if(dwarfResponses[d].valuePath.size() == 0)
+		if(dwarfResponses[d].valuePath.size() == 1)
 		{
 			std::cout << dwarfs[d].name << " path: started at the destination." << std::endl; // dwarfs and dwarfResponses have the same size
 			continue;
@@ -223,7 +223,6 @@ void route(int code)
 // This is dijkstras using the destination as the source. 
 void routeDij(NodeValue* responseMap)
 {	
-	responseMap[destIndex].valuePath.push_back(destIndex);
 	responseMap[destIndex].value = 0;
 	
 	std::list<Node*> nodeList;
@@ -247,6 +246,7 @@ void routeDij(NodeValue* responseMap)
 			}
 		}
 		
+		responseMap[nodeMin->locationIndex].valuePath.push_back(nodeMin->locationIndex);
 		nodeList.erase(itErase);
 		for(unsigned int i = 0; i < nodeMin->edges.size(); i++)
 		{
@@ -254,7 +254,10 @@ void routeDij(NodeValue* responseMap)
 			USI followNodeIndex = followEdgeIndex(nodeMin, nodeMin->edges[i]);
 			if(takeEdgeNewTotal < responseMap[followNodeIndex].value)
 			{
-				responseMap[followNodeIndex].valuePath.push_back(nodeMin->locationIndex);
+				responseMap[followNodeIndex].valuePath.clear();
+				
+				for(unsigned int j = 0; j < responseMap[nodeMin->locationIndex].valuePath.size(); j++)
+					responseMap[followNodeIndex].valuePath.push_back(responseMap[nodeMin->locationIndex].valuePath[j]);
 				responseMap[followNodeIndex].value = takeEdgeNewTotal;
 			}
 		}
