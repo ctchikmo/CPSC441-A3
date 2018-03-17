@@ -4,12 +4,24 @@
 #include <fstream>
 #include <cstring>
 #include <climits> // MAX values for data types
+#include <list>
 
 #include "Router.h"
+
+USI destIndex = 0;
+USI algCode = 0;
+bool stopAtDest = true;
+Node* map[MAP_SIZE];
 
 // Thanks @https://stackoverflow.com/questions/12774207/fastest-way-to-check-if-a-file-exist-using-standard-c-c11-c for file existance checking
 void route(int code)
 {
+	// Setting globals
+	algCode = code;
+	stopAtDest = (code != ROUTE_MGP);
+	for(int i = 0; i < MAP_SIZE; i++) 
+		map[i] = NULL;
+	
 	std::cout << "Please enter the name or path to the topology file" << std::endl;
 	
 	std::string topologyFileName;
@@ -28,10 +40,6 @@ void route(int code)
 			std::cout << "Could not find file, try again or enter 'q' to stop" << std::endl;
 	}
 	std::cout << "Topology file found" << std::endl << std::endl;
-	
-	Node* map[MAP_SIZE];
-	for(int i = 0; i < MAP_SIZE; i++) 
-		map[i] = NULL;
 	
 	// Read in the topology file
 	std::ifstream topologyFile(topologyFileName); 
@@ -174,33 +182,36 @@ void route(int code)
 	}
 	std::cout << "Routing everyone to " << dwarfMeetHouseName << "'s house" << std::endl << std::endl;
 	
-	std::vector<GreedResponse> dwarfResponses;
-	USI meetNodeIndex = (USI)(dwarfMeetNode - 'A');
+	std::vector<NodeValue> dwarfResponses;
+	destIndex = (USI)(dwarfMeetNode - 'A');
 	
-	if(code == ROUTE_ALL)
+	if(code == ROUTE_MGP)
 	{
-		
+		// We need to brute force MGP as every possible path for each node must be checked, with not guranteed stop (can pass through the destination)
+		for(unsigned int i = 0; i < dwarfs.size(); i++) 
+			dwarfResponses.push_back(routeMGP((USI)(dwarfs[i].location - 'A'), NULL));
 	}
 	else
 	{
+		NodeValue responseMap[MAP_SIZE];
+		routeDij(responseMap); // Route from dest to all nodes.
+		
 		for(unsigned int i = 0; i < dwarfs.size(); i++) 
-		{
-			dwarfResponses.push_back(recursivePathFinder(map, meetNodeIndex, (USI)(dwarfs[i].location - 'A'), NULL, code, code != ROUTE_MGP)); // Only MGP has no stop at dest rule
-		}
+			dwarfResponses.push_back(responseMap[(USI)(dwarfs[i].location - 'A')]);
 	}
 	
 	for(unsigned int d = 0; d < dwarfResponses.size(); d++)
 	{
 		// We started at the node
-		if(dwarfResponses[d].greedPath.size() == 0)
+		if(dwarfResponses[d].valuePath.size() == 0)
 		{
 			std::cout << dwarfs[d].name << " path: started at the destination." << std::endl; // dwarfs and dwarfResponses have the same size
 			continue;
 		}
 		
 		std::cout << dwarfs[d].name << " path: ";
-		for(int i = dwarfResponses[d].greedPath.size() - 1; i >= 0; i--) // Not unsigned, cause if size is 0 than we fault ( 0 - 1 == USINT MAX)
-			std::cout << (char)(dwarfResponses[d].greedPath[i] + 'A') << ' ';
+		for(int i = dwarfResponses[d].valuePath.size() - 1; i >= 0; i--) // Not unsigned, cause if size is 0 than we fault ( 0 - 1 == USINT MAX)
+			std::cout << (char)(dwarfResponses[d].valuePath[i] + 'A') << ' ';
 		std::cout << std::endl;
 	}
 	
@@ -209,72 +220,101 @@ void route(int code)
 		delete map[i];
 }
 
-GreedResponse greedAlgorithm(Edge* edgeTakenToCurrentNode, std::vector<GreedResponse>* responsesForPathsFromCurrentNode, USI currentNodeIndex, USI destIndex, USI algCode)
-{
-	if(responsesForPathsFromCurrentNode->size() > 0)
+// This is dijkstras using the destination as the source. 
+void routeDij(NodeValue* responseMap)
+{	
+	responseMap[destIndex].valuePath.push_back(destIndex);
+	responseMap[destIndex].value = 0;
+	
+	std::list<Node*> nodeList;
+	for(int i = 0; i < MAP_SIZE; i++)
+		if(map[i] != NULL)
+			nodeList.push_back(map[i]);
+	
+	while(!nodeList.empty())
 	{
-		GreedResponse* bestResponseFromVec = NULL;
+		// Get least value node
+		Node* nodeMin = nodeList.front();
+		std::list<Node*>::iterator itErase = nodeList.begin();
+		std::list<Node*>::iterator it = nodeList.begin();
+		it++;
+		for(; it != nodeList.end(); it++)
+		{
+			if(responseMap[(*it)->locationIndex].value < responseMap[nodeMin->locationIndex].value)
+			{
+				nodeMin = map[(*it)->locationIndex];
+				itErase = it;
+			}
+		}
+		
+		nodeList.erase(itErase);
+		for(unsigned int i = 0; i < nodeMin->edges.size(); i++)
+		{
+			unsigned int takeEdgeNewTotal = responseMap[nodeMin->locationIndex].value + getEdgevalue(nodeMin->edges[i]);
+			USI followNodeIndex = followEdgeIndex(nodeMin, nodeMin->edges[i]);
+			if(takeEdgeNewTotal < responseMap[followNodeIndex].value)
+			{
+				responseMap[followNodeIndex].valuePath.push_back(nodeMin->locationIndex);
+				responseMap[followNodeIndex].value = takeEdgeNewTotal;
+			}
+		}
+	}
+}
+
+NodeValue routeMGP(USI currentNodeIndex, Edge* edgeTaken)
+{	
+	std::vector<NodeValue> NodeValues; // Each unique next node reachable from this path will insert a response here. We pick which to use via the greed function
+	for(unsigned int i = 0; i < map[currentNodeIndex]->edges.size(); i++)
+	{
+		// Take the edge if it is not taken
+		if(!map[currentNodeIndex]->edges[i]->taken)
+		{
+			map[currentNodeIndex]->edges[i]->taken = true;
+			NodeValues.push_back(routeMGP(followEdgeIndex(map[currentNodeIndex], map[currentNodeIndex]->edges[i]), map[currentNodeIndex]->edges[i]));
+		
+			// We are back from all of the possible ways taking the above edge can go, so unmark it as taken so the next edge from this node can path back through it, if it is a possible path.
+			map[currentNodeIndex]->edges[i]->taken = false;
+		}
+	}
+	
+	return greedAlgorithm(edgeTaken, &NodeValues, currentNodeIndex); // Note that edgeTaken can be NULL here!
+}
+
+NodeValue greedAlgorithm(Edge* edgeTakenToCurrentNode, std::vector<NodeValue>* valuesForPathsFromCurrentNode, USI currentNodeIndex)
+{
+	if(valuesForPathsFromCurrentNode->size() > 0)
+	{
+		NodeValue* bestResponseFromVec = NULL;
 		unsigned int i = 0;
 		
 		// This loop picks the initial response to compare to, must be done like this not picking [0] so that we don't pick a response that doesnt end in the dest accidentily. 
-		for(; i < responsesForPathsFromCurrentNode->size() && bestResponseFromVec == NULL; i++)
-			if((((*responsesForPathsFromCurrentNode)[i]).greedPath[0] == destIndex))
-				bestResponseFromVec = &((*responsesForPathsFromCurrentNode)[i]);
+		for(; i < valuesForPathsFromCurrentNode->size() && bestResponseFromVec == NULL; i++)
+			if((((*valuesForPathsFromCurrentNode)[i]).valuePath[0] == destIndex))
+				bestResponseFromVec = &((*valuesForPathsFromCurrentNode)[i]);
 		
 		// Pick the best response from the remaining depending on the greed factor
 		// MUST END AT DEST, greed method is called end backwards, so this is always possible (also the dest is first index as this is done in reverse!!!)
-		for(; i < responsesForPathsFromCurrentNode->size(); i++)
-			if(compareGreedValues((*responsesForPathsFromCurrentNode)[i].greedValue, bestResponseFromVec->greedValue, algCode) && (((*responsesForPathsFromCurrentNode)[i]).greedPath[0] == destIndex))
-				bestResponseFromVec = &((*responsesForPathsFromCurrentNode)[i]);
+		for(; i < valuesForPathsFromCurrentNode->size(); i++)
+			if(((*valuesForPathsFromCurrentNode)[i].value > bestResponseFromVec->value) && (((*valuesForPathsFromCurrentNode)[i]).valuePath[0] == destIndex))
+				bestResponseFromVec = &((*valuesForPathsFromCurrentNode)[i]);
 			
 		if(bestResponseFromVec != NULL)
 		{
 			// bestResponseFromVec already has the previous nodes best values, so now we just add our edge values
-			bestResponseFromVec->greedValue += getEdgeGreedValue(edgeTakenToCurrentNode, algCode);
-			bestResponseFromVec->greedPath.push_back(currentNodeIndex);
+			bestResponseFromVec->value += getEdgevalue(edgeTakenToCurrentNode);
+			bestResponseFromVec->valuePath.push_back(currentNodeIndex);
 			return *bestResponseFromVec;
 		}
 	}
 	
 	// This case happens at the last node. 
-	GreedResponse rv;
-	rv.greedValue = getEdgeGreedValue(edgeTakenToCurrentNode, algCode);
-	rv.greedPath.push_back(currentNodeIndex);
+	NodeValue rv;
+	rv.value = getEdgevalue(edgeTakenToCurrentNode);
+	rv.valuePath.push_back(currentNodeIndex);
 	return rv;
 }
 
-GreedResponse recursivePathFinder(Node** map, USI meetNodeIndex, USI currentNodeIndex, Edge* edgeTaken, USI algCode, bool stopAtDest)
-{	
-	std::vector<GreedResponse> greedResponses; // Each unique next node reachable from this path will insert a response here. We pick which to use via the greed function
-	if(stopAtDest && map[currentNodeIndex]->locationIndex == meetNodeIndex)
-	{
-		// The if below is not included in the if above as I don't want to go into the else in the case that the edgeTaken != NULL
-		if(edgeTaken == NULL) // Edge taken is only null if its the first call (so not a recursive call). This means no path is needed, we started on the node destination.
-		{
-			GreedResponse startAtDestResp; // NOTE: if this case happens, the returned array size for the path will be 0. Therefore we went no where.
-			return startAtDestResp;
-		}
-	}
-	else
-	{
-		for(unsigned int i = 0; i < map[currentNodeIndex]->edges.size(); i++)
-		{
-			// Take the edge if it is not taken
-			if(!map[currentNodeIndex]->edges[i]->taken)
-			{
-				map[currentNodeIndex]->edges[i]->taken = true;
-				greedResponses.push_back(recursivePathFinder(map, meetNodeIndex, followEdgeIndex(map[currentNodeIndex], map[currentNodeIndex]->edges[i]), map[currentNodeIndex]->edges[i], algCode, stopAtDest));
-			
-				// We are back from all of the possible ways taking the above edge can go, so unmark it as taken so the next edge from this node can path back through it, if it is a possible path.
-				map[currentNodeIndex]->edges[i]->taken = false;
-			}
-		}
-	}
-	
-	return greedAlgorithm(edgeTaken, &greedResponses, currentNodeIndex, meetNodeIndex, algCode); // Note that edgeTaken can be NULL here!
-}
-
-int followEdgeIndex(Node* nodeOn, Edge* edgeTake)
+USI followEdgeIndex(Node* nodeOn, Edge* edgeTake)
 {
 	if(nodeOn->locationIndex == edgeTake->host1)
 		return edgeTake->host2;
@@ -282,7 +322,7 @@ int followEdgeIndex(Node* nodeOn, Edge* edgeTake)
 	return edgeTake->host1;
 }
 
-unsigned int getEdgeGreedValue(Edge* edge, USI algCode)
+unsigned int getEdgevalue(Edge* edge)
 {
 	// edge can be NULL!
 	if(edge == NULL)
@@ -307,14 +347,6 @@ unsigned int getEdgeGreedValue(Edge* edge, USI algCode)
 	}
 	
 	return 1; // This should never be reached. 
-}
-
-bool compareGreedValues(unsigned int pathToCheckGV, unsigned int bestGV, USI algCode)
-{
-	if(algCode == ROUTE_MGP)
-		return pathToCheckGV > bestGV;
-	
-	return pathToCheckGV < bestGV; // All paths except MGP want shortest possible, so we always take least
 }
 
 

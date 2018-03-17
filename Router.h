@@ -4,7 +4,6 @@
 #include <string>
 #include <vector>
 
-#define ROUTE_ALL 	0
 #define ROUTE_SHP	1
 #define ROUTE_SDP	2
 #define ROUTE_STP	3
@@ -71,34 +70,21 @@ struct Node
 	}
 };
 
-struct DwarfRouteMessage
+struct NodeValue
 {
-	Dwarf* dwarf;
-	std::vector<char> hops; // This vector does not include the starting location, but does include the destination. Number of hops is the size of this
-	unsigned int totalDistance; // Total distance might exceed 16 bits, so this is not a short int
-	unsigned int totalTime;
-	USI totalCoins;
-	USI totalTrolls;
-};
-
-struct GreedResponse
-{
-	std::vector<USI> greedPath; // Note: this needs to be read in reverse as recursion builds it from the end to the start, also the path MUST end in the desired destination node
-	unsigned int greedValue;
+	std::vector<USI> valuePath; // Note: this needs to be read in reverse as recursion builds it from the end to the start, also the path MUST end in the desired destination node
+	unsigned int value = -1;// -1 assigns to max cause unsigned
 };
 
 void route(int code);
+void routeDij(NodeValue* responseMap); 
 
 // The greed algorithm picks the best response to use from the vector, then adds the edge cost to get to the node holding that vector.
 // The case of there being no path should never occur as due to the assumptions listed in the assignment document
-GreedResponse greedAlgorithm(Edge* edgeTakenToCurrentNode, std::vector<GreedResponse>* responsesForPathsFromCurrentNode, USI currentNodeIndex, USI destIndex, USI algCode);
+NodeValue routeMGP(USI currentNodeIndex, Edge* edgeTaken);
+NodeValue greedAlgorithm(Edge* edgeTakenToCurrentNode, std::vector<NodeValue>* responsesForPathsFromCurrentNode, USI currentNodeIndex);
 
-// We return the greedy sum of what the best path for the given greedy function is from the node (determined by aglCode), plus the cost to get to the node.
-GreedResponse recursivePathFinder(Node** map, USI meetNodeIndex, USI currentNodeIndex, Edge* edgeTaken, USI algCode, bool stopAtDest); 
-int followEdgeIndex(Node* nodeOn, Edge* edgeTake);
-
-// Note: for both of these ROUTE_ALL is not a valid code (no checks, just don't use it!)
-unsigned int getEdgeGreedValue(Edge* edge, USI algCode);
-bool compareGreedValues(unsigned int pathToCheckGV, unsigned int bestGV, USI algCode);
+USI followEdgeIndex(Node* nodeOn, Edge* edgeTake);
+unsigned int getEdgevalue(Edge* edge);
 
 #endif

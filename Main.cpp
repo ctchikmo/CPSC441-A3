@@ -1,5 +1,4 @@
 #include <iostream>
-#include <string>
 
 #include "Router.h"
 
@@ -7,14 +6,14 @@
 #define CODE_GOOD 		1
 #define CODE_QUIT		2
 
+int handleCommand(std::string input);
+void help();
+
 /*
 * MAJOR ASSUMPTION
 * + Given the assignments description of graph theory, there will never be an isolated node, thus the case of being unable to reach the destination will never occur. 
 *	However, nodes may contain any number of paths which can not reach the destination, but one that can will always exist. 
 */
-
-int handleCommand(std::string input);
-void help();
 
 // There are no command line arguments for this program.
 int main()
@@ -57,9 +56,7 @@ int handleCommand(std::string input)
 	}
 	else if(input.size() == 3)
 	{
-		if(input[0] == 'a' && input[1] == 'l' && input[2] == 'l')
-			route(ROUTE_ALL);
-		else if(input[0] == 's' && input[1] == 'h' && input[2] == 'p')
+		if(input[0] == 's' && input[1] == 'h' && input[2] == 'p')
 			route(ROUTE_SHP);
 		else if(input[0] == 's' && input[1] == 'd' && input[2] == 'p')
 			route(ROUTE_SDP);
@@ -85,7 +82,6 @@ void help()
 	std::cout << "Command List (lowercase only):" << std::endl;
 	std::cout << "+ 'help': Brings up this menu" << std::endl;
 	std::cout << "+ 'q': Exit the program" << std::endl;
-	std::cout << "+ 'all': Start traversal using all algorithms (asks for file names on use)" << std::endl;
 	std::cout << "+ 'shp': Start traversal using the shortest hop path (asks for file names on use)" << std::endl;
 	std::cout << "+ 'sdp': Start traversal using the shortest distance path (asks for file names on use)" << std::endl;
 	std::cout << "+ 'stp': Start traversal using the shortest time path (asks for file names on use)" << std::endl;
