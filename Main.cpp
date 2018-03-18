@@ -2,8 +2,6 @@
 
 #include "Router.h"
 
-#define ENABLE_MULTITHREDING	0
-
 #define CODE_BAD_INPUT 	0
 #define CODE_GOOD 		1
 #define CODE_QUIT		2
@@ -23,29 +21,24 @@ short int numMGPThreads = 1;
 int main(int argc, char** argv)
 {
 	//For some reason multithreading the mgp actually results in a slowdown of about 20 times per thread added. Unrelated to max stack size, or the map. I have no idea what causes this. 
-#if ENABLE_MULTITHREDING
-	if(argc != 2)
+	if(argc == 2)
 	{
-		std::cout << "Please enter arguments as: ./Hobbit <MGP routing threads (1-16)>" << std::endl;
-		exit(1);
+		try
+		{
+			numMGPThreads = std::stoi(std::string(argv[1]));
+		}
+		catch(...)
+		{
+			std::cout << "Error, thread value entered is not an integer." << std::endl;
+			exit(1);
+		}
+		
+		if(numMGPThreads < 1 || numMGPThreads > 16)
+		{
+			std::cout << "Error, enter a thread value between 1 and 16 (both inclusive)" << std::endl;
+			exit(1);
+		}
 	}
-	
-	try
-	{
-		numMGPThreads = std::stoi(std::string(argv[1]));
-	}
-	catch(...)
-	{
-		std::cout << "Error, thread value entered is not an integer." << std::endl;
-		exit(1);
-	}
-	
-	if(numMGPThreads < 1 || numMGPThreads > 16)
-	{
-		std::cout << "Error, enter a thread value between 1 and 16 (both inclusive)" << std::endl;
-		exit(1);
-	}
-#endif
 	
 	setupMGPThreads(numMGPThreads); // Still call so that the 1 thread is used. 
 	
