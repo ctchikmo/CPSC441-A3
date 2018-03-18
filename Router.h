@@ -16,6 +16,8 @@
 #define MAP_SIZE 	26
 #define USI unsigned short int
 
+class MGPThread; // Forward dec
+
 struct Dwarf
 {
 	std::string name;
@@ -35,7 +37,6 @@ struct Edge
 	USI time; // Note: this is in minutes
 	USI coins;
 	USI trolls;
-	bool taken = false;
 	
 	Edge(USI h1, USI h2, USI dist, USI ti, USI c, USI tr):
 	host1(h1),
@@ -79,12 +80,17 @@ struct NodeValue
 	unsigned int value = -1;// -1 assigns to max cause unsigned
 };
 
+void setupMGPThreads(short int num);
+void mgpFinished(MGPThread* thread);
+
 void route(int code);
-void routeDij(NodeValue* responseMap); 
+void routeDij(NodeValue* responseMap); // Not multithreaded unlike routeMGP as all nodes best values are found in a single run, rather than multiple individual runs. 
 
 // The greed algorithm picks the best response to use from the vector, then adds the edge cost to get to the node holding that vector.
 // The case of there being no path should never occur as due to the assumptions listed in the assignment document
-NodeValue routeMGP(USI currentNodeIndex, Edge* edgeTaken);
+// RouteMGP is multithreaded so that each individuals path can be calcualted in a thread instead of sequentially. Great performance improvement on machines with > 1 physical thread. 
+// NOTE: THESE ARE CALLED FROM THE MGPThread BUT RESIDE IN Router.cpp AS THE ROUTER GLOBALS ARE USED
+NodeValue routeMGP(bool*** takenMatrix, USI currentNodeIndex, Edge* edgeTaken);
 NodeValue greedAlgorithm(Edge* edgeTakenToCurrentNode, std::vector<NodeValue>* responsesForPathsFromCurrentNode, USI currentNodeIndex);
 
 USI followEdgeIndex(Node* nodeOn, Edge* edgeTake);

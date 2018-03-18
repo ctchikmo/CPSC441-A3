@@ -9,15 +9,41 @@
 int handleCommand(std::string input);
 void help();
 
+short int numMGPThreads = 0;
+
 /*
 * MAJOR ASSUMPTION
 * + Given the assignments description of graph theory, there will never be an isolated node, thus the case of being unable to reach the destination will never occur. 
 *	However, nodes may contain any number of paths which can not reach the destination, but one that can will always exist. 
 */
 
-// There are no command line arguments for this program.
-int main()
+// There is one cmd line argument, number of threads to use for mgp finding. 
+int main(int argc, char** argv)
 {
+	if(argc != 2)
+	{
+		std::cout << "Please enter arguments as: ./Hobbit <MGP routing threads (1-16)>" << std::endl;
+		exit(1);
+	}
+	
+	try
+	{
+		numMGPThreads = std::stoi(std::string(argv[1]));
+	}
+	catch(...)
+	{
+		std::cout << "Error, thread value entered is not an integer." << std::endl;
+		exit(1);
+	}
+	
+	if(numMGPThreads < 1 || numMGPThreads > 16)
+	{
+		std::cout << "Error, enter a thread value between 1 and 16 (both inclusive)" << std::endl;
+		exit(1);
+	}
+	
+	setupMGPThreads(numMGPThreads);
+	
 	// Start an input loop. This loop takes in commands by the user. 
 	std::cout << std::endl << "Please enter a command (enter 'help' to see the command list)" << std::endl << std::endl;
 	
@@ -79,6 +105,7 @@ int handleCommand(std::string input)
 
 void help()
 {
+	std::cout << "There are " << numMGPThreads << " thread(s) being used to run MGP." << std::endl;
 	std::cout << "Command List (lowercase only):" << std::endl;
 	std::cout << "+ 'help': Brings up this menu" << std::endl;
 	std::cout << "+ 'q': Exit the program" << std::endl;

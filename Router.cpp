@@ -7,13 +7,42 @@
 #include <list>
 #include <iomanip> // setprecision
 #include <sstream> // stringstream
+#include <pthread.h>
 
 #include "Router.h"
+#include "MGPThread.h"
 
+short int threadCount;
+pthread_mutex_t listMutex;
+pthread_cond_t stackCond;
+std::list<MGPThread*> threadList;
+
+// Some global values set everytime a request is entered. 
+USI totalIndividuals = 0;
 USI destIndex = 0;
 USI algCode = 0;
 bool stopAtDest = true;
 Node* map[MAP_SIZE];
+
+void setupMGPThreads(short int num)
+{
+	threadCount = num;
+	pthread_mutex_init(&listMutex, NULL);
+	pthread_cond_init(&stackCond, NULL);
+	
+	for(int i = 0; i < num; i++)
+		new MGPThread(); // They will add themselves to threadList
+}
+
+void mgpFinished(MGPThread* thread)
+{
+	pthread_mutex_lock(&listMutex);
+	{
+		threadList.push_back(thread);
+		pthread_cond_signal(&stackCond);
+	}
+	pthread_mutex_unlock(&listMutex);
+}
 
 // Thanks @https://stackoverflow.com/questions/12774207/fastest-way-to-check-if-a-file-exist-using-standard-c-c11-c for file existance checking
 void route(int code)
@@ -43,7 +72,7 @@ void route(int code)
 	}
 	std::cout << "Topology file found" << std::endl << std::endl;
 	
-	// Read in the topology file
+	// Read in the topology file, note we must update the mgp threads edgeTaken matrix for each new file as the size could be different (during this time the threads in all in wait mode). 
 	std::ifstream topologyFile(topologyFileName); 
 	if(topologyFile)
 	{
@@ -97,6 +126,11 @@ void route(int code)
 		std::cout << "Error opening topology file." << std::endl << std::endl;
 		return;
 	}
+	
+	// Set the mgp threads takenMatrix
+	if(code == ROUTE_MGP)
+		for(std::list<MGPThread*>::iterator it = threadList.begin(); it != threadList.end(); it++)
+			(*it)->buildTakenMatrix(map);
 	
 	std::cout << "Please enter the name or path to the starting locations file" << std::endl;
 	
@@ -161,6 +195,7 @@ void route(int code)
 	
 	// Get the dwarfs house to meet at, default to Bilbo
 	std::string dwarfMeetHouseName;
+	totalIndividuals = dwarfs.size();
 	
 	std::cout << "Please enter the indivudals name that everyone will go to. (Defaults to Bilbo if the name is invalid)" << std::endl;
 	std::getline(std::cin, dwarfMeetHouseName);
@@ -189,9 +224,30 @@ void route(int code)
 	
 	if(code == ROUTE_MGP)
 	{
+		dwarfResponses.resize(dwarfs.size());
+		
 		// We need to brute force MGP as every possible path for each node must be checked, with not guranteed stop (can pass through the destination)
 		for(unsigned int i = 0; i < dwarfs.size(); i++) 
-			dwarfResponses.push_back(routeMGP((USI)(dwarfs[i].location - 'A'), NULL));
+		{
+			pthread_mutex_lock(&listMutex);
+			{
+				while(threadList.empty())
+					pthread_cond_wait(&stackCond, &listMutex);
+				
+				MGPThread* mgpT = threadList.front();
+				threadList.pop_front();
+				mgpT->startMGP(&dwarfResponses, i, (USI)(dwarfs[i].location - 'A'));
+			}
+			pthread_mutex_unlock(&listMutex);
+		}
+		
+		// Can not progress until all requests have been sent out (handled above) and have returned (handled now)
+		pthread_mutex_lock(&listMutex);
+		{
+			while((short int)threadList.size() != threadCount)
+				pthread_cond_wait(&stackCond, &listMutex);
+		}
+		pthread_mutex_unlock(&listMutex);
 	}
 	else
 	{
@@ -238,9 +294,7 @@ void routeDij(NodeValue* responseMap)
 		responseMap[nodeMin->locationIndex].valuePath.push_back(nodeMin->locationIndex);
 		nodeList.erase(itErase);
 		for(unsigned int i = 0; i < nodeMin->edges.size(); i++)
-		{
-			// Do not mark nodes as processed, im doing destination as soruce, so it messes up if you do this. 
-			
+		{			
 			USI followNodeIndex = followEdgeIndex(nodeMin, nodeMin->edges[i]);
 			unsigned int takeEdgeNewTotal = responseMap[nodeMin->locationIndex].value + getEdgevalue(nodeMin->edges[i]);
 			
@@ -256,19 +310,19 @@ void routeDij(NodeValue* responseMap)
 	}
 }
 
-NodeValue routeMGP(USI currentNodeIndex, Edge* edgeTaken)
+NodeValue routeMGP(bool*** takenMatrix, USI currentNodeIndex, Edge* edgeTaken)
 {	
 	std::vector<NodeValue> NodeValues; // Each unique next node reachable from this path will insert a response here. We pick which to use via the greed function
 	for(unsigned int i = 0; i < map[currentNodeIndex]->edges.size(); i++)
 	{
 		// Take the edge if it is not taken
-		if(!map[currentNodeIndex]->edges[i]->taken)
+		if(!*takenMatrix[currentNodeIndex][i])
 		{
-			map[currentNodeIndex]->edges[i]->taken = true;
-			NodeValues.push_back(routeMGP(followEdgeIndex(map[currentNodeIndex], map[currentNodeIndex]->edges[i]), map[currentNodeIndex]->edges[i]));
+			*takenMatrix[currentNodeIndex][i] = true;
+			NodeValues.push_back(routeMGP(takenMatrix, followEdgeIndex(map[currentNodeIndex], map[currentNodeIndex]->edges[i]), map[currentNodeIndex]->edges[i]));
 		
 			// We are back from all of the possible ways taking the above edge can go, so unmark it as taken so the next edge from this node can path back through it, if it is a possible path.
-			map[currentNodeIndex]->edges[i]->taken = false;
+			*takenMatrix[currentNodeIndex][i] = false;
 		}
 	}
 	
@@ -390,8 +444,9 @@ void printResults(std::vector<NodeValue>* dwarfResponses, std::vector<Dwarf>* dw
 	double coinsTotal = 0;
 	double trollsTotal = 0;
 	
-	double dwarfCount = (*dwarfResponses).size() - 1; // The home owner / convergence point person does not get a say in the final average (the loop has +1 cause checking who it is heavier than doing +1)
-	for(unsigned int d = 0; d < dwarfCount + 1; d++)
+	// The home owner / convergence point person does not get a say in the final average. In mgp they do contribute
+	double dwarfCount = (*dwarfResponses).size() + (algCode == ROUTE_MGP ? 0 : -1);
+	for(unsigned int d = 0; d < (*dwarfResponses).size(); d++)
 	{
 		std::string home = "";
 		home += (*dwarfs)[d].location;
