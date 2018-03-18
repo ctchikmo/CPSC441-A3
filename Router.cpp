@@ -132,10 +132,9 @@ void route(int code)
 		return;
 	}
 	
-	// Set the mgp threads takenMatrix
-	if(code == ROUTE_MGP)
-		for(std::list<MGPThread*>::iterator it = threadList.begin(); it != threadList.end(); it++)
-			(*it)->buildTakenMatrix(map, newMap);
+	// Set the mgp threads takenMatrix, do this every time, even if it is not MGP so that a previous mgp run can have its memory deallocated. (The time for this to happen is pretty small, performance impact low)
+	for(std::list<MGPThread*>::iterator it = threadList.begin(); it != threadList.end(); it++)
+		(*it)->buildTakenMatrix(map, newMap);
 	
 	// Delete dynamic memory, deletion of edges is handled by the node. See note at the end of the function as to why this is not at the end. 
 	for(unsigned int i = 0; i < MAP_SIZE; i++)
