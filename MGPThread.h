@@ -11,7 +11,7 @@ class MGPThread
 		MGPThread();
 		~MGPThread();
 		
-		void buildTakenMatrix(Node** map);
+		void buildTakenMatrix(Node** map, Node** newMap);
 		void startMGP(std::vector<NodeValue>* dwarfResp, USI respPos, USI startPos);
 		void stop();
 		
@@ -25,6 +25,7 @@ class MGPThread
 		USI responsesPosition = -1;// Max value as unsigned
 		USI startPos = -1;// Max value as unsigned
 		bool*** takenMatrix = NULL;
+		int nodeEdgeSizes[MAP_SIZE];
 	
 		void runnerLoop();
 	

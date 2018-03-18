@@ -26,6 +26,9 @@ Node* map[MAP_SIZE];
 
 void setupMGPThreads(short int num)
 {
+	for(int i = 0; i < MAP_SIZE; i++) 
+		map[i] = NULL;
+	
 	threadCount = num;
 	pthread_mutex_init(&listMutex, NULL);
 	pthread_cond_init(&stackCond, NULL);
@@ -50,8 +53,6 @@ void route(int code)
 	// Setting globals
 	algCode = code;
 	stopAtDest = (code != ROUTE_MGP);
-	for(int i = 0; i < MAP_SIZE; i++) 
-		map[i] = NULL;
 	
 	std::cout << "Please enter the name or path to the topology file" << std::endl;
 	
@@ -74,6 +75,10 @@ void route(int code)
 	
 	// Read in the topology file, note we must update the mgp threads edgeTaken matrix for each new file as the size could be different (during this time the threads in all in wait mode). 
 	std::ifstream topologyFile(topologyFileName); 
+	Node* newMap[MAP_SIZE];
+	for(int i = 0; i < MAP_SIZE; i++) 
+		newMap[i] = NULL;
+	
 	if(topologyFile)
 	{
 		std::string line;
@@ -99,18 +104,18 @@ void route(int code)
 			}
 			
 			USI host1Index = host1[0] - 'A';
-			if(map[host1Index] == NULL)
-				map[host1Index] = new Node(host1Index);
+			if(newMap[host1Index] == NULL)
+				newMap[host1Index] = new Node(host1Index);
 			
 			USI host2Index = host2[0] - 'A';
-			if(map[host2Index] == NULL)
-				map[host2Index] = new Node(host2Index);
+			if(newMap[host2Index] == NULL)
+				newMap[host2Index] = new Node(host2Index);
 			
 			try
 			{
 				Edge* edge = new Edge(host1Index, host2Index, (USI)std::stoi(std::string(dist)), (USI)std::stoi(std::string(time)), (USI)std::stoi(std::string(coins)), (USI)std::stoi(std::string(trolls)));
-				map[host1Index]->edges.push_back(edge);
-				map[host2Index]->edges.push_back(edge);
+				newMap[host1Index]->edges.push_back(edge);
+				newMap[host2Index]->edges.push_back(edge);
 			}
 			catch(...)
 			{
@@ -130,8 +135,15 @@ void route(int code)
 	// Set the mgp threads takenMatrix
 	if(code == ROUTE_MGP)
 		for(std::list<MGPThread*>::iterator it = threadList.begin(); it != threadList.end(); it++)
-			(*it)->buildTakenMatrix(map);
+			(*it)->buildTakenMatrix(map, newMap);
 	
+	// Delete dynamic memory, deletion of edges is handled by the node. See note at the end of the function as to why this is not at the end. 
+	for(unsigned int i = 0; i < MAP_SIZE; i++)
+		if(map[i] != NULL)
+			delete map[i];
+	
+	for(unsigned int i = 0; i < MAP_SIZE; i++)
+		map[i] = newMap[i];
 	std::cout << "Please enter the name or path to the starting locations file" << std::endl;
 	
 	std::string dwarfFileName;
@@ -260,9 +272,7 @@ void route(int code)
 	
 	printResults(&dwarfResponses, &dwarfs, dwarfMeetHouseName);
 	
-	// Delete dynamic memory, deletion of edges is handled by the node. 
-	for(unsigned int i = 0; i < MAP_SIZE; i++)
-		delete map[i];
+	// Note that we can not delete map memory until after the next requests map is generated, as at that point thread data is also cleared, so they is a temporary memory leak.
 }
 
 // This is dijkstras using the destination as the source. 
@@ -325,7 +335,7 @@ NodeValue routeMGP(bool*** takenMatrix, USI currentNodeIndex, Edge* edgeTaken)
 			*takenMatrix[currentNodeIndex][i] = false;
 		}
 	}
-	
+
 	return greedAlgorithm(edgeTaken, &NodeValues, currentNodeIndex); // Note that edgeTaken can be NULL here!
 }
 

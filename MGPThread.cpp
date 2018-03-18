@@ -21,41 +21,54 @@ MGPThread::~MGPThread()
 	pthread_cond_destroy(&cond);
 }
 
-void MGPThread::buildTakenMatrix(Node** map)
+void MGPThread::buildTakenMatrix(Node** map, Node** newMap)
 {
 	// Handle map deletion of the map created for the thread, if a previous topology map was read. It is only NULL on the first run
-	/*
 	if(takenMatrix != NULL)
 	{
 		for(unsigned int i = 0; i < MAP_SIZE; i++)
-			delete[] takenMatrix[i];
+		{
+			if(takenMatrix[i] != NULL)
+			{
+				for(int j = 0; j < nodeEdgeSizes[i]; j++)
+				{
+					Edge* edge = map[i]->edges[j];
+					USI thisNodeIndex = map[i]->locationIndex;
+					
+					if((edge->host1 == thisNodeIndex && thisNodeIndex < edge->host2) || (edge->host2 == thisNodeIndex && thisNodeIndex < edge->host1))
+						delete takenMatrix[i][j];
+				}
+
+				delete takenMatrix[i];
+			}
+		}
 		
 		delete[] takenMatrix;
 	}
-	*/
 	
 	takenMatrix = new bool**[MAP_SIZE];
 	for(int i = 0; i < MAP_SIZE; i++)
 	{
-		if(map[i] != NULL)
+		if(newMap[i] != NULL)
 		{
-			int size = map[i]->edges.size();
+			int size = newMap[i]->edges.size();
 			takenMatrix[i] = new bool*[size];
+			nodeEdgeSizes[i] = size;
 			
 			// Nodes share edges, so must have 2 linking nodes point at same bool
 			for(int j = 0; j < size; j++)
 			{
-				USI otherNodeIndex = followEdgeIndex(map[i], map[i]->edges[j]);// This method is in Router.cpp
-				if(otherNodeIndex > map[i]->locationIndex) // If the index is greater than the other nodes edge taken list is not yet set
+				USI otherNodeIndex = followEdgeIndex(newMap[i], newMap[i]->edges[j]);// This method is in Router.cpp
+				if(otherNodeIndex > newMap[i]->locationIndex) // If the index is greater than the other nodes edge taken list is not yet set
 				{
 					takenMatrix[i][j] = new bool;
 					*takenMatrix[i][j] = false;
 				}
 				else
 				{
-					for(unsigned int k = 0; k < map[otherNodeIndex]->edges.size(); k++)
+					for(unsigned int k = 0; k < newMap[otherNodeIndex]->edges.size(); k++)
 					{
-						if(map[otherNodeIndex]->edges[k]->host1 == i || map[otherNodeIndex]->edges[k]->host2 == i)
+						if(newMap[otherNodeIndex]->edges[k]->host1 == i || newMap[otherNodeIndex]->edges[k]->host2 == i)
 						{
 							takenMatrix[i][j] = takenMatrix[otherNodeIndex][k];
 							break;
@@ -63,6 +76,11 @@ void MGPThread::buildTakenMatrix(Node** map)
 					}
 				}
 			}
+		}
+		else
+		{
+			takenMatrix[i] = NULL;
+			nodeEdgeSizes[i] = 0;
 		}
 	}
 }

@@ -9,7 +9,7 @@
 int handleCommand(std::string input);
 void help();
 
-short int numMGPThreads = 0;
+short int numMGPThreads = 1;
 
 /*
 * MAJOR ASSUMPTION
@@ -20,6 +20,7 @@ short int numMGPThreads = 0;
 // There is one cmd line argument, number of threads to use for mgp finding. 
 int main(int argc, char** argv)
 {
+	/* For some reason multithreading the mgp actually results in a slowdown of about 20 times per thread added. Unrelated to max stack size, or the map. I have no idea what causes this. 
 	if(argc != 2)
 	{
 		std::cout << "Please enter arguments as: ./Hobbit <MGP routing threads (1-16)>" << std::endl;
@@ -41,8 +42,9 @@ int main(int argc, char** argv)
 		std::cout << "Error, enter a thread value between 1 and 16 (both inclusive)" << std::endl;
 		exit(1);
 	}
+	*/
 	
-	setupMGPThreads(numMGPThreads);
+	setupMGPThreads(numMGPThreads); // Still call so that the 1 thread is used. 
 	
 	// Start an input loop. This loop takes in commands by the user. 
 	std::cout << std::endl << "Please enter a command (enter 'help' to see the command list)" << std::endl << std::endl;
@@ -105,7 +107,7 @@ int handleCommand(std::string input)
 
 void help()
 {
-	std::cout << "There are " << numMGPThreads << " thread(s) being used to run MGP." << std::endl;
+	//std::cout << "There are " << numMGPThreads << " thread(s) being used to run MGP." << std::endl;
 	std::cout << "Command List (lowercase only):" << std::endl;
 	std::cout << "+ 'help': Brings up this menu" << std::endl;
 	std::cout << "+ 'q': Exit the program" << std::endl;
